@@ -1,0 +1,4 @@
+[mariadbd]
+datadir=/mnt/data/db
+socket=/var/lib/mysql/mysql.sock
+bind-address=0.0.0.0

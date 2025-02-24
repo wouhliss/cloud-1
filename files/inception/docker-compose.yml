@@ -1,0 +1,64 @@
+services:
+  nginx:
+    build: requirements/nginx
+    container_name: nginx
+    ports:
+      - "443:443"
+      - "80:80"
+    networks:
+      - reseau
+    volumes:
+      - www-vol:/mnt/data/www
+    restart: always
+    env_file:
+      - .env
+
+  mariadb:
+    build: requirements/mariadb
+    container_name: mariadb
+    networks:
+      - reseau
+    volumes:
+      - db-vol:/mnt/data/db
+    restart: always
+    env_file:
+      - .env
+    healthcheck:
+      test: mariadb -h localhost -S /var/lib/mysql/mysql.sock -e "SHOW databases;" | grep "wordpress"
+      interval: 30s
+      timeout: 5s
+      retries: 10
+
+  wordpress:
+    build: requirements/wordpress
+    container_name: wordpress
+    networks:
+      - reseau
+    volumes:
+      - www-vol:/mnt/data/www
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    restart: always
+    env_file:
+      - .env
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin
+    networks:
+      - reseau
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    restart: always
+    env_file:
+      - .env
+
+volumes:
+  db-vol:
+  www-vol:
+
+networks:
+  reseau:
+    driver: bridge
