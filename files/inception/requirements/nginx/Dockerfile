@@ -32,8 +32,7 @@ COPY conf/fastcgi.conf /etc/nginx/
 
 COPY conf/mime.types /etc/nginx/conf/
 
-COPY conf/cloud-1.acorp.games.conf /etc/nginx/sites-enabled/
-COPY conf/phpmyadmin.cloud-1.acorp.games.conf /etc/nginx/sites-enabled/
+COPY conf/wordpress.conf /etc/nginx/sites-enabled/
 
 COPY tools/entrypoint.sh /
 
