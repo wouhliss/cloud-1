@@ -10,6 +10,6 @@ if [ ! -f /etc/letsencrypt/has_tls ]; then
 	touch /etc/letsencrypt/has_tls
 
 	nginx -s stop
+else
+	nginx -g 'daemon off;'
 fi
-
-nginx -g 'daemon off;'
