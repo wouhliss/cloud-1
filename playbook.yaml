@@ -79,9 +79,9 @@
     - name: Create a record using api token
       community.general.cloudflare_dns:
         zone: "{{ lookup('env','CLOUDFLARE_ZONE') }}"
-        record: "{ { ansible_nodename } }"
+        record: "{{ ansible_nodename }}"
         type: A
-        value: "{ { ansible_default_ipv4.address } }"
+        value: "{{ ansible_default_ipv4.address }}"
         proxied: false
         api_token: "{{ lookup('env','CLOUDFLARE_API_TOKEN') }}"
 
