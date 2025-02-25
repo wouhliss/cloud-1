@@ -12,7 +12,7 @@
           - ca-certificates
           - curl
           - software-properties-common
-        state: present
+        state: latest
 
     # apt-key fingerprint
     - name: Add Docker s official GPG key
@@ -42,7 +42,7 @@
     - name: Install docker
       apt:
         name: docker-ce
-        state: present
+        state: latest
         update_cache: yes
 
     # enable docker service to start at boot
