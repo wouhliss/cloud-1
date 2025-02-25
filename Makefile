@@ -2,6 +2,9 @@ INVENTORY = inventory.ini
 GROUP = myhosts
 PLAYBOOK = playbook.yaml
 
+include ./files/.env
+export
+
 all:
 	ansible-playbook -i ${INVENTORY} ${PLAYBOOK}
 

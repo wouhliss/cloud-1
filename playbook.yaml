@@ -1,6 +1,8 @@
 - name: Cloud-1 install dependencies
   hosts: myhosts
   become: true
+  collections:
+    - community.general.cloudflare_dns
   tasks:
     # install packages to allow apt to use a repository over HTTPS:
     - name: Install docker packages
@@ -74,6 +76,15 @@
     - name: Reset ssh connection to allow user changes to affect ansible user
       meta: reset_connection
 
+    - name: Create a record using api token
+      community.general.cloudflare_dns:
+        zone: "{{ lookup('env','CLOUDFLARE_ZONE') }}"
+        record: { { ansible_nodename } }
+        type: A
+        value: { { ansible_default_ipv4.address } }
+        proxied: false
+        api_token: "{{ lookup('env','CLOUDFLARE_API_TOKEN') }}"
+
 - name: Cloud-1 Deploy
   hosts: myhosts
   collections:
@@ -88,6 +99,12 @@
       copy:
         src: files/.env
         dest: ~/app/inception/.env
+
+    - name: Add hostname variable to Dot Env
+      lineinfile:
+        path: ~/app/inception/.env
+        regexp: "^HOSTNAME="
+        line: "HOSTNAME={{ ansible_nodename }}"
 
     - name: deploy Inception
       community.docker.docker_compose_v2:
