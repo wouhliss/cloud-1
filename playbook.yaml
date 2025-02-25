@@ -81,7 +81,7 @@
         zone: "{{ lookup('env','CLOUDFLARE_ZONE') }}"
         record: "{{ ansible_nodename }}"
         type: A
-        value: "{{ ansible_default_ipv4.address }}"
+        value: "{{ inventory_hostname }}"
         proxied: false
         api_token: "{{ lookup('env','CLOUDFLARE_API_TOKEN') }}"
 
