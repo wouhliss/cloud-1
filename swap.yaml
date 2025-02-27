@@ -1,8 +1,6 @@
 - name: Cloud-1 create swap file
   hosts: myhosts
   become: true
-  collections:
-    - ansible.posix.mount
   vars:
     swap_configure: true
     swap_file_path: /swap
@@ -13,46 +11,52 @@
       when: swap_configure | bool
       block:
         - name: Check if swap file exists
-          stat:
-            path: "{{swap_file_path}}"
+          ansible.builtin.stat:
+            path: "{{ swap_file_path }}"
             get_checksum: false
           register: swap_file_check
           changed_when: false
 
         - name: Check if swap is on
-          shell: swapon --show | grep {{swap_file_path}}
+          ansible.builtin.shell: |
+            set -o pipefail
+            swapon --show | grep {{ swap_file_path }}
           register: swap_is_enabled
           changed_when: false
           failed_when: false
 
         - name: Configure swap
-          when: not swap_file_check.stat.exists|bool and not swap_is_enabled|bool
+          when: not swap_file_check.stat.exists | bool and not swap_is_enabled | bool
           block:
             - name: Create or change the size of swap file
-              command: dd if=/dev/zero of={{swap_file_path}} count={{swap_file_size_mb}} bs=1MiB
+              ansible.builtin.command: dd if=/dev/zero of={{ swap_file_path }} count={{ swap_file_size_mb }} bs=1MiB
               register: swap_file_created
+              changed_when: true
 
             - name: Change swap file permissions
-              file:
-                path: "{{swap_file_path}}"
-                mode: 0600
+              ansible.builtin.file:
+                path: "{{ swap_file_path }}"
+                mode: "600"
 
             - name: Check if swap is formatted
-              shell: file {{swap_file_path}} | grep 'swap file'
+              ansible.builtin.shell: |
+                set -o pipefail
+                file {{ swap_file_path }} | grep 'swap file'
               register: swap_file_is_formatted
-              changed_when: false
+              changed_when: true
               failed_when: false
 
             - name: Format swap file if it's not formatted
-              command: mkswap {{swap_file_path}}
+              ansible.builtin.command: mkswap {{ swap_file_path }}
               when: >
                 ('rc' in swap_file_is_formatted and swap_file_is_formatted.rc > 0)
                 or swap_file_created.changed
+              changed_when: false
 
             - name: Add swap entry to fstab
-              mount:
+              ansible.posix.mount:
                 name: none
-                src: "{{swap_file_path}}"
+                src: "{{ swap_file_path }}"
                 fstype: swap
                 opts: sw
                 passno: "0"
@@ -60,13 +64,14 @@
                 state: present
 
             - name: Turn on swap
-              shell: swapon -a
+              ansible.builtin.command: swapon -a
               when: >
                 ('rc' in swap_is_enabled and swap_is_enabled.rc != 0)
                 or swap_disabled.changed
+              changed_when: true
 
             - name: Configure swappiness
-              sysctl:
+              ansible.posix.sysctl:
                 name: vm.swappiness
-                value: "{{ swappiness|string }}"
+                value: "{{ swappiness | string }}"
                 state: present

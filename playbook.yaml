@@ -1,115 +1,113 @@
 - name: Cloud-1 install dependencies
   hosts: myhosts
   become: true
-  collections:
-    - community.general.cloudflare_dns
   vars:
     dist: ubuntu
     release: focal
   tasks:
     # install packages to allow apt to use a repository over HTTPS:
     - name: Install docker packages
-      apt:
+      ansible.builtin.apt:
         pkg:
           - apt-transport-https
           - ca-certificates
           - curl
           - software-properties-common
-        state: latest
+        state: present
 
     # apt-key fingerprint
     - name: Add Docker s official GPG key
-      apt_key:
+      ansible.builtin.apt_key:
         url: https://download.docker.com/linux/{{ dist }}/gpg
         state: present
 
     # apt-key fingerprint
     - name: Verify that we have the key with the fingerprint
-      apt_key:
+      ansible.builtin.apt_key:
         id: 0EBFCD88
         state: present
 
     # add-apt-repository
     - name: Set up the stable repository
-      apt_repository:
-        repo: deb [arch=amd64] https://download.docker.com/linux/{{ dist }} {{release}} stable
+      ansible.builtin.apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/{{ dist }} {{ release }} stable
         state: present
-        update_cache: yes
+        update_cache: true
 
     # apt-get update
     - name: Update apt packages
-      apt:
-        update_cache: yes
+      ansible.builtin.apt:
+        update_cache: true
 
     # install docker-ce latetst verion
     - name: Install docker
-      apt:
+      ansible.builtin.apt:
         name: docker-ce
-        state: latest
-        update_cache: yes
+        state: present
+        update_cache: true
 
     # enable docker service to start at boot
     - name: Enable docker.service
-      systemd:
+      ansible.builtin.systemd:
         name: docker.service
         daemon_reload: true
         enabled: true
 
     # enable container service to start at boot
     - name: Enable containerd.service
-      systemd:
+      ansible.builtin.systemd:
         name: containerd.service
         daemon_reload: true
         enabled: true
 
     # sudo groupadd docker
     - name: Create "docker" group
-      group:
+      ansible.builtin.group:
         name: docker
         state: present
 
     # sudo usermod -aG docker root
     - name: Add remote user to "docker" group
-      user:
+      ansible.builtin.user:
         name: "{{ ansible_user }}"
         groups:
           - docker
-        append: yes
+        append: true
 
     - name: Create a record using api token
       community.general.cloudflare_dns:
-        zone: "{{ lookup('env','CLOUDFLARE_ZONE') }}"
+        zone: "{{ lookup('env', 'CLOUDFLARE_ZONE') }}"
         record: "{{ ansible_nodename }}"
         type: A
         value: "{{ inventory_hostname }}"
         proxied: false
-        api_token: "{{ lookup('env','CLOUDFLARE_API_TOKEN') }}"
+        api_token: "{{ lookup('env', 'CLOUDFLARE_API_TOKEN') }}"
 
 - name: Cloud-1 Deploy
   hosts: myhosts
-  collections:
-    - community.docker
   tasks:
     - name: Reset ssh connection to allow user changes to affect ansible user
-      meta: reset_connection
+      ansible.builtin.meta: reset_connection
 
-    - name: copy Inception
-      copy:
+    - name: Copy Inception
+      ansible.builtin.copy:
         src: files/inception
         dest: ~/app/
+        mode: "700"
 
-    - name: copy Dot Env
-      copy:
+    - name: Copy Dot Env
+      ansible.builtin.copy:
         src: files/.env
         dest: ~/app/inception/.env
+        mode: "700"
 
     - name: Add hostname variable to Dot Env
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: ~/app/inception/.env
         regexp: "^HOSTNAME="
         line: "HOSTNAME={{ ansible_nodename }}"
 
-    - name: deploy Inception
+    - name: Deploy Inception
       community.docker.docker_compose_v2:
         project_src: ~/app/inception
         files:
