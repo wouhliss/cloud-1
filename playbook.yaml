@@ -5,8 +5,13 @@
     dist: ubuntu
     release: focal
   tasks:
+    # apt-get update
+    - name: Update apt packages
+      ansible.builtin.apt:
+        update_cache: true
+
     # install packages to allow apt to use a repository over HTTPS:
-    - name: Install docker packages
+    - name: Install required packages for HTTPS apt
       ansible.builtin.apt:
         pkg:
           - apt-transport-https
@@ -16,7 +21,7 @@
         state: present
 
     # apt-key fingerprint
-    - name: Add Docker s official GPG key
+    - name: Add Docker official GPG key
       ansible.builtin.apt_key:
         url: https://download.docker.com/linux/{{ dist }}/gpg
         state: present
@@ -28,7 +33,7 @@
         state: present
 
     # add-apt-repository
-    - name: Set up the stable repository
+    - name: Setup the stable repository
       ansible.builtin.apt_repository:
         repo: deb [arch=amd64] https://download.docker.com/linux/{{ dist }} {{ release }} stable
         state: present
@@ -39,7 +44,7 @@
       ansible.builtin.apt:
         update_cache: true
 
-    # install docker-ce latetst verion
+    # install docker-ce latest verion
     - name: Install docker
       ansible.builtin.apt:
         name: docker-ce
@@ -66,7 +71,7 @@
         name: docker
         state: present
 
-    # sudo usermod -aG docker root
+    # sudo usermod -aG docker "remote user"
     - name: Add remote user to "docker" group
       ansible.builtin.user:
         name: "{{ ansible_user }}"
@@ -74,6 +79,7 @@
           - docker
         append: true
 
+    # add a dns record pointing to remote instance
     - name: Create a record using api token
       community.general.cloudflare_dns:
         zone: "{{ lookup('env', 'CLOUDFLARE_ZONE') }}"
@@ -86,27 +92,32 @@
 - name: Cloud-1 Deploy
   hosts: myhosts
   tasks:
+    # reset ssh connection for remote user to be able to use docker
     - name: Reset ssh connection to allow user changes to affect ansible user
       ansible.builtin.meta: reset_connection
 
+    # copying project files to remote host
     - name: Copy Inception
       ansible.builtin.copy:
         src: files/inception
         dest: ~/app/
         mode: "700"
 
+    # copying dot env to remote host
     - name: Copy Dot Env
       ansible.builtin.copy:
         src: files/.env
         dest: ~/app/inception/.env
         mode: "700"
 
+    # adding hostname variable to dot env using ansible nodename variable
     - name: Add hostname variable to Dot Env
       ansible.builtin.lineinfile:
         path: ~/app/inception/.env
         regexp: "^HOSTNAME="
         line: "HOSTNAME={{ ansible_nodename }}"
 
+    # starting the app
     - name: Deploy Inception
       community.docker.docker_compose_v2:
         project_src: ~/app/inception
